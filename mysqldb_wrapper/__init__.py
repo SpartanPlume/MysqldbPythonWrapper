@@ -1,4 +1,4 @@
-"""Wrapper for MySQL to simplify use"""
+"""MySQLdb wrapper for easy usage and encryption"""
 
 import copy
 import logging
@@ -7,7 +7,8 @@ import warnings
 import MySQLdb
 from MySQLdb.cursors import Cursor as MySQLCursor
 
-from common.utils import crypt
+import crypt
+from .crypt import Id
 
 warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
@@ -82,7 +83,8 @@ class Cursor:
 class Database:
     """Contains the connection to the database and other informations"""
 
-    def __init__(self, user, password, db_name, logging_handler=None):
+    def __init__(self, user, password, db_name, encryption_key, logging_handler=None):
+        crypt.init(encryption_key)
         self.user = user
         self.password = password
         self.db_name = db_name
@@ -167,7 +169,7 @@ class Session:
 
     def add(self, obj):
         obj_tmp = crypt.encrypt_obj(copy.deepcopy(obj))
-        query = "INSERT INTO " + obj_tmp.__tablename__ + " ("
+        query = "INSERT INTO " + obj.__tablename__ + " ("
         all_values = []
         for key, value in vars(obj_tmp).items():
             if key.startswith("_") or key == "id":
@@ -202,12 +204,13 @@ class Session:
             query += key + " = %s, "
             all_values.append(value)
         if obj_id < 0:
-            return
+            return None
         query = query[:-2]
         query += " WHERE id = " + str(obj_id) + ";"
         cursor = self.db.cursor()
         cursor.execute(query, all_values)
         self.db.commit()
+        return obj
 
     def delete(self, obj):
         return delete(self.db, obj)
@@ -231,6 +234,7 @@ class Query:
         else:
             cursor.execute(self.query)
         result = cursor.fetchone()
+        self.query = self.query[:-1]
         if not result:
             return None
         return crypt.decrypt_obj(self.obj(result))
@@ -243,6 +247,7 @@ class Query:
         else:
             cursor.execute(self.query)
         results = list(cursor.fetchall())
+        self.query = self.query[:-1]
         if not results:
             return None
         to_return = []
@@ -251,8 +256,8 @@ class Query:
         return to_return
 
     def delete(self):
-        to_return = self.all()
-        for o in to_return:
+        to_delete = self.all()
+        for o in to_delete:
             delete(self.db, o)
 
     def where(self, *args):
@@ -278,4 +283,4 @@ def delete(db, obj):
     cursor = db.cursor()
     cursor.execute(query)
     db.commit()
-    obj.id = int()
+    obj.id = Id()

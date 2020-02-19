@@ -1,0 +1,5 @@
+{
+    "DB_TEST": "mysqldb_wrapper",
+    "DB_USERNAME": "mysqldb_wrapper_user",
+    "DB_PASSWORD": "abcdefgh"
+}

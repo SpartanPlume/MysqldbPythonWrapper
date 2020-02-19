@@ -1,9 +1,10 @@
-"""All tests concerning encryption and decryption of the data"""
+"""All tests concerning the encryption and decryption of the data"""
 
 import unittest
 import copy
 
-import crypt
+from mysqldb_wrapper import crypt
+from cryptography.fernet import Fernet
 
 
 class Test:
@@ -14,14 +15,18 @@ class Test:
 
 
 class CryptTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        crypt.init(Fernet.generate_key())
+
     def test_hash(self):
-        """Test hashing a string"""
+        """Hash a string"""
         initial_string = "test"
         new_string = crypt.hash_value(initial_string)
         self.assertNotEqual(initial_string, new_string)
 
     def test_crypt_obj(self):
-        """Test encrypting an object and decrypting it"""
+        """Encrypt an object and decrypt it"""
         obj = Test()
         new_obj = crypt.encrypt_obj(copy.deepcopy(obj))
         self.assertNotEqual(obj.number, new_obj.number)

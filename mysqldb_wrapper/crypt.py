@@ -9,15 +9,19 @@ _fernet = None
 
 
 class Id(int):
+    """Special class to not encrypt"""
+
     pass
 
 
 def init(encryption_key):
+    """Sets the encryption key for all later uses of crypt"""
     global _fernet
     _fernet = Fernet(encryption_key)
 
 
 def is_encrypted(obj, key):
+    """Checks if the database object field is encrypted or to be encrypted"""
     return not isinstance(getattr(type(obj)(), key), bytes) and not isinstance(
         getattr(type(obj)(), key), Id
     )
