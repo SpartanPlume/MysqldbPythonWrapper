@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="mysqldb_wrapper",
-    version="0.1",
+    version="0.2.0",
     description="A small package that wraps MySQLdb for easy usage and encryption",
     keywords="mysqldb mysql mysqldb_wrapper encryption hash",
     url="https://github.com/SpartanPlume/MysqldbPythonWrapper",

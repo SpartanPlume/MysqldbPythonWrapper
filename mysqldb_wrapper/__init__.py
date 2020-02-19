@@ -132,8 +132,8 @@ class Database:
 class Session:
     """Creates and handles the database session"""
 
-    def __init__(self, user, password, db_name, logging_handler=None):
-        self.db = Database(user, password, db_name, logging_handler)
+    def __init__(self, user, password, db_name, encryption_key, logging_handler=None):
+        self.db = Database(user, password, db_name, encryption_key, logging_handler)
         for subclass in Base.__subclasses__():
             self.create_table(subclass)
 
