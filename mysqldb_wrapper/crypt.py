@@ -1,5 +1,6 @@
 """Encrypt and decrypt datas"""
 
+import copy
 import hashlib
 
 from cryptography.fernet import Fernet
@@ -22,9 +23,7 @@ def init(encryption_key):
 
 def is_encrypted(obj, key):
     """Checks if the database object field is encrypted or to be encrypted"""
-    return not isinstance(getattr(type(obj)(), key), bytes) and not isinstance(
-        getattr(type(obj)(), key), Id
-    )
+    return not isinstance(getattr(type(obj)(), key), bytes) and not isinstance(getattr(type(obj)(), key), Id)
 
 
 def to_bytes(value):
@@ -60,26 +59,24 @@ def encrypt_obj(obj):
     """Encrypts an object"""
     if not obj:
         return None
-    fields = vars(obj)
+    encrypted_obj = copy.deepcopy(obj)
+    fields = vars(encrypted_obj)
     for key, value in fields.items():
         if not key.startswith("_"):
-            if is_encrypted(obj, key):
-                setattr(obj, key, _fernet.encrypt(to_bytes(value)))
-            elif isinstance(getattr(type(obj)(), key), bytes) and not isinstance(
-                value, bytes
-            ):
-                setattr(obj, key, hash_value(value))
-    return obj
+            if is_encrypted(encrypted_obj, key):
+                setattr(encrypted_obj, key, _fernet.encrypt(to_bytes(value)))
+            elif isinstance(getattr(type(encrypted_obj)(), key), bytes) and not isinstance(value, bytes):
+                setattr(encrypted_obj, key, hash_value(value))
+    return encrypted_obj
 
 
 def decrypt_obj(obj):
     """Decrypts an object"""
     if not obj:
         return None
-    fields = vars(obj)
+    decrypted_obj = copy.deepcopy(obj)
+    fields = vars(decrypted_obj)
     for key, value in fields.items():
-        if not key.startswith("_") and is_encrypted(obj, key):
-            setattr(
-                obj, key, from_bytes(_fernet.decrypt(value), getattr(type(obj)(), key))
-            )
-    return obj
+        if not key.startswith("_") and is_encrypted(decrypted_obj, key):
+            setattr(decrypted_obj, key, from_bytes(_fernet.decrypt(value), getattr(type(decrypted_obj)(), key)))
+    return decrypted_obj

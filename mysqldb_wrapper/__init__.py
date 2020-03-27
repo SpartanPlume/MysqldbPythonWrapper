@@ -1,6 +1,5 @@
 """MySQLdb wrapper for easy usage and encryption"""
 
-import copy
 import logging
 import warnings
 
@@ -18,11 +17,7 @@ class Empty:
 
 
 def diff(other):
-    return {
-        k: v
-        for k, v in vars(other).items()
-        if k not in vars(Empty).keys() and not callable(other.__dict__[k])
-    }
+    return {k: v for k, v in vars(other).items() if k not in vars(Empty).keys() and not callable(other.__dict__[k])}
 
 
 def getattribute(cls, name):
@@ -168,10 +163,10 @@ class Session:
         return Query(self.db, obj)
 
     def add(self, obj):
-        obj_tmp = crypt.encrypt_obj(copy.deepcopy(obj))
+        encrypted_obj = crypt.encrypt_obj(obj)
         query = "INSERT INTO " + obj.__tablename__ + " ("
         all_values = []
-        for key, value in vars(obj_tmp).items():
+        for key, value in vars(encrypted_obj).items():
             if key.startswith("_") or key == "id":
                 continue
             query += key + ","
@@ -191,11 +186,11 @@ class Session:
         return obj
 
     def update(self, obj):
-        obj_tmp = crypt.encrypt_obj(copy.deepcopy(obj))
+        encrypted_obj = crypt.encrypt_obj(obj)
         query = "UPDATE " + obj.__tablename__ + " SET "
         all_values = []
         obj_id = -1
-        for key, value in vars(obj_tmp).items():
+        for key, value in vars(encrypted_obj).items():
             if key == "id":
                 obj_id = value
                 continue

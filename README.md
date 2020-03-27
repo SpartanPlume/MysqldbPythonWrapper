@@ -24,6 +24,7 @@ class Test(Base):
     __tablename__ = "test"
 
     id = Id()
+    another_table_id = Id()
     hashed = bytes()
     number = int(1)
     string = str("string")
@@ -32,6 +33,7 @@ class Test(Base):
 
 To explain in details:
 - `id = Id()` is, as its name implies, the database object `id`. **Always put one Id**.
+- `another_table_id = Id()` is the `id` of another table in the database.
 - `hashed = bytes()` will be a hashed string, always declare it empty.
 - `number = int(1)` will be a int with a default value `1`.
 - `string = str("string")` will be a string with a default value `string`.
@@ -119,8 +121,8 @@ obj = session.query(Test).where(Test.hashed == "abcd").first()
 You can also chain the `where` methods, use variables and query all objects:
 ```python
 a_string = "something"
-list_obj = session.query(Test).where(Test.id == 2).where(Test.hashed == a_string).all()
+list_obj = session.query(Test).where(Test.another_table_id == 2).where(Test.hashed == a_string).all()
 ```
 
-**IMPORTANT: The `where` method only works with equality as of now. Also, you can only query by id and hashes.**
+**IMPORTANT: The `where` method only works with equality as of now. Also, you can only query by Id and hashes.**
 
