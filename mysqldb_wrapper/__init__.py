@@ -244,7 +244,7 @@ class Query:
         results = list(cursor.fetchall())
         self.query = self.query[:-1]
         if not results:
-            return None
+            return []
         to_return = []
         for result in results:
             to_return.append(crypt.decrypt_obj(self.obj(result)))
