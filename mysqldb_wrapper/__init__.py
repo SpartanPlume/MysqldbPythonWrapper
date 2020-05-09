@@ -1,5 +1,6 @@
 """MySQLdb wrapper for easy usage and encryption"""
 
+import datetime
 import logging
 import warnings
 
@@ -163,6 +164,10 @@ class Session:
         return Query(self.db, obj)
 
     def add(self, obj):
+        if "created_at" in obj.__dict__:
+            obj.created_at = int(datetime.datetime.utcnow().timestamp())
+        if "updated_at" in obj.__dict__:
+            obj.updated_at = int(datetime.datetime.utcnow().timestamp())
         encrypted_obj = crypt.encrypt_obj(obj)
         query = "INSERT INTO " + obj.__tablename__ + " ("
         all_values = []
@@ -186,6 +191,8 @@ class Session:
         return obj
 
     def update(self, obj):
+        if "updated_at" in obj.__dict__:
+            obj.updated_at = int(datetime.datetime.utcnow().timestamp())
         encrypted_obj = crypt.encrypt_obj(obj)
         query = "UPDATE " + obj.__tablename__ + " SET "
         all_values = []

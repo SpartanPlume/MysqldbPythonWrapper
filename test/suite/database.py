@@ -11,12 +11,7 @@ from config import constants
 class DatabaseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.session = Session(
-            constants.DB_USERNAME,
-            constants.DB_PASSWORD,
-            constants.DB_TEST,
-            Fernet.generate_key(),
-        )
+        cls.session = Session(constants.DB_USERNAME, constants.DB_PASSWORD, constants.DB_TEST, Fernet.generate_key())
 
     @classmethod
     def tearDownClass(cls):
@@ -36,6 +31,8 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(obj.number, 1)
         self.assertEqual(obj.string, "a")
         self.assertEqual(obj.boolean, True)
+        self.assertNotEqual(obj.created_at, 0)
+        self.assertNotEqual(obj.updated_at, 0)
 
     def test_delete_object(self):
         """Delete an object of the database"""
@@ -90,12 +87,7 @@ class DatabaseTestCase(unittest.TestCase):
         self.session.add(obj)
         obj = Test(hashed="aaaa", number=2, string="word", boolean=True)
         self.session.add(obj)
-        list_obj = (
-            self.session.query(Test)
-            .where(Test.hashed == "aaaa")
-            .where(Test.id == obj.id)
-            .all()
-        )
+        list_obj = self.session.query(Test).where(Test.hashed == "aaaa").where(Test.id == obj.id).all()
         self.assertIsNotNone(list_obj)
         self.assertEqual(len(list_obj), 1)
 
@@ -106,7 +98,7 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertIsNotNone(list_obj)
         query.delete()
         list_obj = query.all()
-        self.assertIsNone(list_obj)
+        self.assertEqual(list_obj, [])
 
 
 def suite():

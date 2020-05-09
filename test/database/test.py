@@ -13,6 +13,8 @@ class Test(Base):
     number = int(1)
     string = str("string")
     boolean = bool(True)
+    created_at = int()
+    updated_at = int()
 
     def func(self):
         pass
