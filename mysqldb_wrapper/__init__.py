@@ -1,5 +1,6 @@
 """MySQLdb wrapper for easy usage and encryption"""
 
+import copy
 import datetime
 import logging
 import warnings
@@ -22,7 +23,7 @@ def diff(other):
 
 
 def getattribute(cls, name):
-    if name.startswith("_"):
+    if name.startswith("_") or isinstance(object.__getattribute__(cls, name), property):
         return object.__getattribute__(cls, name)
     return BaseOperator(name)
 
@@ -38,9 +39,11 @@ class BaseMetaclass(type):
 class Base(metaclass=BaseMetaclass):
     """Base class for all databases"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, session=None, *args, **kwargs):
         dic = diff(type(self))
         for key, value in dic.items():
+            if isinstance(getattr(type(self), key, None), property):
+                continue
             setattr(self, key, value)
         for arg in args:
             for key, value in arg.items():
@@ -49,6 +52,14 @@ class Base(metaclass=BaseMetaclass):
         for key, value in kwargs.items():
             if key in dic:
                 setattr(self, key, value)
+        self._session = session
+
+    def __deepcopy__(self, memo):
+        new_obj = self.__class__(self._session)
+        for key, value in vars(self).items():
+            if not key.startswith("_"):
+                setattr(new_obj, key, copy.deepcopy(value, memo))
+        return new_obj
 
 
 class BaseOperator:
@@ -140,7 +151,7 @@ class Session:
         query = "CREATE TABLE IF NOT EXISTS " + obj.__tablename__ + " ("
         has_id = False
         for key, value in vars(obj).items():
-            if key.startswith("_"):
+            if key.startswith("_") or isinstance(getattr(obj, key, None), property):
                 continue
             if key == "id":
                 has_id = True
@@ -161,9 +172,10 @@ class Session:
         cursor.execute(query)
 
     def query(self, obj):
-        return Query(self.db, obj)
+        return Query(self, obj)
 
     def add(self, obj):
+        obj._session = self
         if "created_at" in obj.__dict__:
             obj.created_at = int(datetime.datetime.utcnow().timestamp())
         if "updated_at" in obj.__dict__:
@@ -221,8 +233,8 @@ class Session:
 class Query:
     """A class that is returned when asking to do a query"""
 
-    def __init__(self, db, obj):
-        self.db = db
+    def __init__(self, session, obj):
+        self.session = session
         self.obj = obj
         self.query = "SELECT * FROM " + obj.__tablename__
         self.all_values = []
@@ -230,7 +242,7 @@ class Query:
 
     def first(self):
         self.query += ";"
-        cursor = self.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = self.session.db.cursor(MySQLdb.cursors.DictCursor)
         if self.all_values:
             cursor.execute(self.query, self.all_values)
         else:
@@ -239,11 +251,11 @@ class Query:
         self.query = self.query[:-1]
         if not result:
             return None
-        return crypt.decrypt_obj(self.obj(result))
+        return crypt.decrypt_obj(self.obj(self.session, result))
 
     def all(self):
         self.query += ";"
-        cursor = self.db.cursor(MySQLdb.cursors.DictCursor)
+        cursor = self.session.db.cursor(MySQLdb.cursors.DictCursor)
         if self.all_values:
             cursor.execute(self.query, self.all_values)
         else:
@@ -254,13 +266,13 @@ class Query:
             return []
         to_return = []
         for result in results:
-            to_return.append(crypt.decrypt_obj(self.obj(result)))
+            to_return.append(crypt.decrypt_obj(self.obj(self.session, result)))
         return to_return
 
     def delete(self):
         to_delete = self.all()
         for o in to_delete:
-            delete(self.db, o)
+            delete(self.session.db, o)
 
     def where(self, *args):
         for key, value in args:

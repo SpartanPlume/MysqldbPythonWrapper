@@ -1,12 +1,17 @@
 """Test table"""
 
 from mysqldb_wrapper import Base, Id
+from test.database.child import Child
 
 
 class Test(Base):
     """Test class"""
 
     __tablename__ = "test"
+
+    def __init__(self, session=None, *args, **kwargs):
+        super().__init__(session, *args, **kwargs)
+        self._childs = None
 
     id = Id()
     hashed = bytes()
@@ -18,3 +23,9 @@ class Test(Base):
 
     def func(self):
         pass
+
+    @property
+    def childs(self):
+        if self._childs is None:
+            self._childs = self._session.query(Child).where(Child.parent_id == self.id).all()
+        return self._childs

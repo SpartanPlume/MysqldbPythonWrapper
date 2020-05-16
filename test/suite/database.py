@@ -5,6 +5,7 @@ from cryptography.fernet import Fernet
 
 from mysqldb_wrapper import Session
 from test.database.test import Test
+from test.database.child import Child
 from config import constants
 
 
@@ -91,9 +92,30 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertIsNotNone(list_obj)
         self.assertEqual(len(list_obj), 1)
 
+    def test_child_table(self):
+        """Add a child and update, query child via parent property"""
+        obj = Test(hashed="aaaa", number=1, string="word", boolean=True)
+        self.session.add(obj)
+        child = Child(parent_id=obj.id, number=2)
+        self.session.add(child)
+        self.assertEqual(len(obj.childs), 1)
+        self.assertEqual(obj.childs[0].parent_id, obj.id)
+        self.assertEqual(obj.childs[0].number, 2)
+        obj.childs[0].number = 3
+        self.session.update(obj.childs[0])
+        child = self.session.query(Child).where(Child.parent_id == obj.id).first()
+        self.assertIsNotNone(child)
+        self.assertEqual(child.number, 3)
+
     def test_query_delete_object(self):
         """Delete all objects from the database by query"""
         query = self.session.query(Test)
+        list_obj = query.all()
+        self.assertIsNotNone(list_obj)
+        query.delete()
+        list_obj = query.all()
+        self.assertEqual(list_obj, [])
+        query = self.session.query(Child)
         list_obj = query.all()
         self.assertIsNotNone(list_obj)
         query.delete()
@@ -111,5 +133,6 @@ def suite():
     suite.addTest(DatabaseTestCase("test_query_where_object_by_hash"))
     suite.addTest(DatabaseTestCase("test_query_all_object"))
     suite.addTest(DatabaseTestCase("test_query_chaining_where"))
+    suite.addTest(DatabaseTestCase("test_child_table"))
     suite.addTest(DatabaseTestCase("test_query_delete_object"))
     return suite
