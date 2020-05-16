@@ -271,8 +271,7 @@ class Query:
 
     def delete(self):
         to_delete = self.all()
-        for o in to_delete:
-            delete(self.session.db, o)
+        delete(self.session.db, to_delete)
 
     def where(self, *args):
         for key, value in args:
@@ -289,12 +288,17 @@ class Query:
         return self
 
 
-def delete(db, obj):
-    dic = vars(obj)
-    if "id" not in dic:
+def delete(db, to_delete):
+    if not to_delete:
         return
-    query = "DELETE FROM " + obj.__tablename__ + " WHERE id = " + str(dic["id"]) + ";"
-    cursor = db.cursor()
-    cursor.execute(query)
-    db.commit()
-    obj.id = Id()
+    if not isinstance(to_delete, list):
+        to_delete = [to_delete]
+    for obj in to_delete:
+        dic = vars(obj)
+        if "id" not in dic:
+            return
+        query = "DELETE FROM " + obj.__tablename__ + " WHERE id = " + str(dic["id"]) + ";"
+        cursor = db.cursor()
+        cursor.execute(query)
+        db.commit()
+        obj.id = Id()

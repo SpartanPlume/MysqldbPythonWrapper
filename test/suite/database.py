@@ -122,6 +122,11 @@ class DatabaseTestCase(unittest.TestCase):
         list_obj = query.all()
         self.assertEqual(list_obj, [])
 
+    def test_delete_none_or_empty(self):
+        """Try to delete None or empty"""
+        self.session.delete(None)
+        self.session.delete([])
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -135,4 +140,5 @@ def suite():
     suite.addTest(DatabaseTestCase("test_query_chaining_where"))
     suite.addTest(DatabaseTestCase("test_child_table"))
     suite.addTest(DatabaseTestCase("test_query_delete_object"))
+    suite.addTest(DatabaseTestCase("test_delete_none_or_empty"))
     return suite
