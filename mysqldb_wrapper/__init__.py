@@ -141,8 +141,14 @@ class Session:
 
     def __init__(self, user, password, db_name, encryption_key, logging_handler=None):
         self.db = Database(user, password, db_name, encryption_key, logging_handler)
-        for subclass in Base.__subclasses__():
-            self.create_table(subclass)
+        self._init_tables(Base.__subclasses__())
+
+    def _init_tables(self, tables):
+        for table in tables:
+            if subtables := table.__subclasses__():
+                self._init_tables(subtables)
+            elif getattr(table, "__tablename__"):
+                self.create_table(table)
 
     def close(self):
         self.db.close()

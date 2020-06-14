@@ -6,6 +6,7 @@ from cryptography.fernet import Fernet
 from mysqldb_wrapper import Session
 from test.database.test import Test
 from test.database.child import Child
+from test.database.parent import Parent
 from config import constants
 
 
@@ -93,7 +94,7 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(len(list_obj), 1)
 
     def test_child_table(self):
-        """Add a child and update, query child via parent property"""
+        """Add a child and update, query, delete child via parent property"""
         obj = Test(hashed="aaaa", number=1, string="word", boolean=True)
         self.session.add(obj)
         child = Child(parent_id=obj.id, number=2)
@@ -106,16 +107,15 @@ class DatabaseTestCase(unittest.TestCase):
         child = self.session.query(Child).where(Child.parent_id == obj.id).first()
         self.assertIsNotNone(child)
         self.assertEqual(child.number, 3)
+        self.session.delete(obj.childs[0])
+        child = self.session.query(Child).where(Child.parent_id == obj.id).first()
+        self.assertIsNone(child)
+        obj.number = 4
+        self.session.update(obj)
 
     def test_query_delete_object(self):
         """Delete all objects from the database by query"""
         query = self.session.query(Test)
-        list_obj = query.all()
-        self.assertIsNotNone(list_obj)
-        query.delete()
-        list_obj = query.all()
-        self.assertEqual(list_obj, [])
-        query = self.session.query(Child)
         list_obj = query.all()
         self.assertIsNotNone(list_obj)
         query.delete()
@@ -126,6 +126,11 @@ class DatabaseTestCase(unittest.TestCase):
         """Try to delete None or empty"""
         self.session.delete(None)
         self.session.delete([])
+
+    def test_parent_not_queryable(self):
+        """Check that the Parent table is not queryable"""
+        with self.assertRaises(AttributeError):
+            self.session.query(Parent).all()
 
 
 def suite():
@@ -141,4 +146,5 @@ def suite():
     suite.addTest(DatabaseTestCase("test_child_table"))
     suite.addTest(DatabaseTestCase("test_query_delete_object"))
     suite.addTest(DatabaseTestCase("test_delete_none_or_empty"))
+    suite.addTest(DatabaseTestCase("test_parent_not_queryable"))
     return suite
