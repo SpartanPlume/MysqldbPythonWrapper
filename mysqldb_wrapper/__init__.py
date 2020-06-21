@@ -75,16 +75,21 @@ class BaseOperator:
 class Cursor:
     """Wrapper of the database cursor"""
 
-    def __init__(self, cursor, logger):
+    def __init__(self, cursor, db):
         self.cursor = cursor
-        self.logger = logger
+        self.db = db
+        self.logger = db.logger
 
     def __getattr__(self, name):
         return getattr(self.cursor, name)
 
     def execute(self, query, args=None):
         self.logger.info(query)
-        self.cursor.execute(query, args)
+        try:
+            self.cursor.execute(query, args)
+        except MySQLdb.OperationalError:
+            self.db.reconnect()
+            self.cursor.execute(query, args)
 
 
 class Database:
@@ -126,7 +131,7 @@ class Database:
         except MySQLdb.OperationalError:
             self.reconnect()
             cursor = self.db.cursor(cursorclass)
-        return Cursor(cursor, self.logger)
+        return Cursor(cursor, self)
 
     def commit(self):
         try:
