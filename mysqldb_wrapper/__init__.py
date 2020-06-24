@@ -13,6 +13,9 @@ from .crypt import Id
 
 warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
+MYSQL_SERVER_IS_GONE = 2006
+MYSQL_TABLE_ALREADY_EXISTS = 1050
+
 
 class Empty:
     pass
@@ -87,7 +90,10 @@ class Cursor:
         self.logger.info(query)
         try:
             self.cursor.execute(query, args)
-        except MySQLdb.OperationalError:
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_SERVER_IS_GONE:
+                raise e
             self.db.reconnect()
             self.cursor.execute(query, args)
 
@@ -107,7 +113,10 @@ class Database:
         self.logger.info("Connecting to the database " + db_name + "...")
         try:
             self.db = MySQLdb.connect(user=user, passwd=password, db=db_name)
-        except MySQLdb.OperationalError:
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_SERVER_IS_GONE:
+                raise e
             self.db = MySQLdb.connect(user=user, passwd=password)
             query = "CREATE DATABASE " + db_name + ";"
             cursor = self.cursor()
@@ -128,7 +137,10 @@ class Database:
     def cursor(self, cursorclass=MySQLCursor):
         try:
             cursor = self.db.cursor(cursorclass)
-        except MySQLdb.OperationalError:
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_SERVER_IS_GONE:
+                raise e
             self.reconnect()
             cursor = self.db.cursor(cursorclass)
         return Cursor(cursor, self)
@@ -136,7 +148,10 @@ class Database:
     def commit(self):
         try:
             self.db.commit()
-        except MySQLdb.OperationalError:
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_SERVER_IS_GONE:
+                raise e
             self.reconnect()
             self.db.commit()
 
@@ -159,10 +174,10 @@ class Session:
         self.db.close()
 
     def create_table(self, obj):
-        query = "CREATE TABLE IF NOT EXISTS " + obj.__tablename__ + " ("
+        query = "CREATE TABLE " + obj.__tablename__ + " ("
         has_id = False
         for key, value in vars(obj).items():
-            if key.startswith("_") or isinstance(getattr(obj, key, None), property):
+            if key.startswith("_") or isinstance(value, property) or callable(value):
                 continue
             if key == "id":
                 has_id = True
@@ -180,7 +195,44 @@ class Session:
             query += ")"
         query += ";"
         cursor = self.db.cursor()
+        try:
+            cursor.execute(query)
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_TABLE_ALREADY_EXISTS:
+                raise e
+            self.update_table(obj)
+
+    def update_table(self, obj):
+        query = "DESC " + obj.__tablename__ + ";"
+        cursor = self.db.cursor()
         cursor.execute(query)
+        current_columns = set([column[0] for column in cursor.fetchall()])
+        obj_columns = set()
+        for key, value in vars(obj).items():
+            if key.startswith("_") or isinstance(value, property) or callable(value):
+                continue
+            obj_columns.add(key)
+        columns_to_add = obj_columns - current_columns
+        columns_to_delete = current_columns - obj_columns
+        for column_to_add in columns_to_add:
+            query = "ALTER TABLE " + obj.__tablename__ + " ADD COLUMN " + column_to_add
+            value = None
+            if isinstance(getattr(obj(), column_to_add), crypt.Id):
+                query += " MEDIUMINT DEFAULT %s"
+                value = [0]
+            else:
+                query += " BLOB DEFAULT %s"
+                value = [crypt.encrypt_value(obj.__dict__[column_to_add])]
+            query += ";"
+            cursor = self.db.cursor()
+            cursor.execute(query, value)
+            self.db.commit()
+        for column_to_delete in columns_to_delete:
+            query = "ALTER TABLE " + obj.__tablename__ + " DROP COLUMN " + column_to_delete + ";"
+            cursor = self.db.cursor()
+            cursor.execute(query)
+            self.db.commit()
 
     def query(self, obj):
         return Query(self, obj)

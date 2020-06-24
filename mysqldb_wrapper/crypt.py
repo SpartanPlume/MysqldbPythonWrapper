@@ -55,6 +55,11 @@ def hash_value(value):
     return hashlib.blake2b(to_bytes(value)).digest()
 
 
+def encrypt_value(value):
+    """Encrypts a value"""
+    return _fernet.encrypt(to_bytes(value))
+
+
 def encrypt_obj(obj):
     """Encrypts an object"""
     if not obj:

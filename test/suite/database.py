@@ -3,7 +3,7 @@
 import unittest
 from cryptography.fernet import Fernet
 
-from mysqldb_wrapper import Session
+from mysqldb_wrapper import Session, Base, Id
 from test.database.test import Test
 from test.database.child import Child
 from test.database.parent import Parent
@@ -132,6 +132,36 @@ class DatabaseTestCase(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.session.query(Parent).all()
 
+    def test_columns_addition_and_deletion(self):
+        obj = Test(hashed="aaaa", number=1, string="word", boolean=True)
+        self.session.add(obj)
+
+        class Test2(Base):
+            """New Test class"""
+
+            __tablename__ = "test"
+
+            id = Id()
+            hashed = bytes()
+            number = int(1)
+            string = str("string")
+            boolean = bool(True)
+            new_column1 = Id()
+            new_column2 = str("new_column")
+
+        self.session._init_tables(Base.__subclasses__())
+        obj = self.session.query(Test2).first()
+        with self.assertRaises(AttributeError):
+            obj.created_at
+        with self.assertRaises(AttributeError):
+            obj.update_at
+        self.assertEqual(obj.number, 1)
+        self.assertEqual(obj.string, "word")
+        self.assertEqual(obj.boolean, True)
+        self.assertEqual(obj.new_column1, 0)
+        self.assertEqual(obj.new_column2, "new_column")
+        self.session.query(Test2).delete()
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -147,4 +177,5 @@ def suite():
     suite.addTest(DatabaseTestCase("test_query_delete_object"))
     suite.addTest(DatabaseTestCase("test_delete_none_or_empty"))
     suite.addTest(DatabaseTestCase("test_parent_not_queryable"))
+    suite.addTest(DatabaseTestCase("test_columns_addition_and_deletion"))
     return suite
