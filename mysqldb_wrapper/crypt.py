@@ -82,6 +82,9 @@ def decrypt_obj(obj):
     decrypted_obj = copy.deepcopy(obj)
     fields = vars(decrypted_obj)
     for key, value in fields.items():
-        if not key.startswith("_") and is_encrypted(decrypted_obj, key):
-            setattr(decrypted_obj, key, from_bytes(_fernet.decrypt(value), getattr(type(decrypted_obj)(), key)))
+        if not key.startswith("_"):
+            if is_encrypted(decrypted_obj, key) and value:
+                setattr(decrypted_obj, key, from_bytes(_fernet.decrypt(value), getattr(type(decrypted_obj)(), key)))
+            elif not value:
+                setattr(decrypted_obj, key, getattr(type(decrypted_obj)(), key))
     return decrypted_obj

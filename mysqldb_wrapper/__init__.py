@@ -217,16 +217,13 @@ class Session:
         columns_to_delete = current_columns - obj_columns
         for column_to_add in columns_to_add:
             query = "ALTER TABLE " + obj.__tablename__ + " ADD COLUMN " + column_to_add
-            value = None
             if isinstance(getattr(obj(), column_to_add), crypt.Id):
-                query += " MEDIUMINT DEFAULT %s"
-                value = [0]
+                query += " MEDIUMINT"
             else:
-                query += " BLOB DEFAULT %s"
-                value = [crypt.encrypt_value(obj.__dict__[column_to_add])]
+                query += " BLOB"
             query += ";"
             cursor = self.db.cursor()
-            cursor.execute(query, value)
+            cursor.execute(query)
             self.db.commit()
         for column_to_delete in columns_to_delete:
             query = "ALTER TABLE " + obj.__tablename__ + " DROP COLUMN " + column_to_delete + ";"
