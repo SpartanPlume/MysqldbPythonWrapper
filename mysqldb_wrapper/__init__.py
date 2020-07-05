@@ -91,11 +91,14 @@ class Base(metaclass=BaseMetaclass):
         for key, value in vars(type(self)).items():
             if isinstance(value, property):
                 sub_object = getattr(self, key)
-                if isinstance(sub_object, list):
-                    sub_dict = [obj.get_complete_dict() for obj in sub_object]
-                    complete_dict[key] = sub_dict
-                else:
-                    complete_dict[key] = sub_object.get_complete_dict()
+                try:
+                    if isinstance(sub_object, list):
+                        sub_dict = [obj.get_complete_dict() for obj in sub_object]
+                        complete_dict[key] = sub_dict
+                    else:
+                        complete_dict[key] = sub_object.get_complete_dict()
+                except AttributeError:
+                    continue
         return complete_dict
 
     def update(self, arg_dict={}, **kwargs):
