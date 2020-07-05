@@ -90,7 +90,12 @@ class Base(metaclass=BaseMetaclass):
         complete_dict = self.get_table_dict()
         for key, value in vars(type(self)).items():
             if isinstance(value, property):
-                complete_dict[key] = getattr(self, key)
+                sub_object = getattr(self, key)
+                if isinstance(sub_object, list):
+                    sub_dict = [obj.get_complete_dict() for obj in sub_object]
+                    complete_dict[key] = sub_dict
+                else:
+                    complete_dict[key] = sub_object.get_complete_dict()
         return complete_dict
 
     def update(self, arg_dict={}, **kwargs):
