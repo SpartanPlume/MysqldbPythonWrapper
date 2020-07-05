@@ -46,9 +46,7 @@ class DatabaseTestCase(unittest.TestCase):
     def test_update_object(self):
         """Update an object in the database"""
         obj = self.session.query(Test).first()  # Already tested
-        obj.number = 2553166
-        obj.string = "word"
-        obj.boolean = True
+        obj.update({"number": 1, "string": "word"}, number="2553166", boolean=True)
         self.session.update(obj)
         obj = self.session.query(Test).first()  # Already tested
         self.assertEqual(obj.number, 2553166)

@@ -26,9 +26,23 @@ def diff(other):
 
 
 def getattribute(cls, name):
-    if name.startswith("_") or isinstance(object.__getattribute__(cls, name), property):
-        return object.__getattribute__(cls, name)
+    if (
+        name.startswith("_")
+        or callable(type.__getattribute__(cls, name))
+        or isinstance(type.__getattribute__(cls, name), property)
+    ):
+        return type.__getattribute__(cls, name)
     return BaseOperator(name)
+
+
+class ClassOrInstanceMethod(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            instance = owner
+        return self.f.__get__(instance, owner)
 
 
 class BaseMetaclass(type):
@@ -59,10 +73,30 @@ class Base(metaclass=BaseMetaclass):
 
     def __deepcopy__(self, memo):
         new_obj = self.__class__(self._session)
-        for key, value in vars(self).items():
-            if not key.startswith("_"):
-                setattr(new_obj, key, copy.deepcopy(value, memo))
+        for key, value in self.get_table_dict().items():
+            setattr(new_obj, key, copy.deepcopy(value, memo))
         return new_obj
+
+    @ClassOrInstanceMethod
+    def get_table_dict(self):
+        table_dict = {}
+        for key, value in vars(self).items():
+            if key.startswith("_") or isinstance(value, property) or callable(value):
+                continue
+            table_dict[key] = value
+        return table_dict
+
+    def get_complete_dict(self):
+        complete_dict = self.get_table_dict()
+        for key, value in vars(type(self)).items():
+            if isinstance(value, property):
+                complete_dict[key] = getattr(self, key)
+        return complete_dict
+
+    def update(self, arg_dict={}, **kwargs):
+        for key, value in {**arg_dict, **kwargs}.items():
+            if key in vars(self):
+                setattr(self, key, type(getattr(self, key))(value))
 
 
 class BaseOperator:
@@ -176,9 +210,7 @@ class Session:
     def create_table(self, obj):
         query = "CREATE TABLE " + obj.__tablename__ + " ("
         has_id = False
-        for key, value in vars(obj).items():
-            if key.startswith("_") or isinstance(value, property) or callable(value):
-                continue
+        for key, value in obj.get_table_dict().items():
             if key == "id":
                 has_id = True
                 query += key + " MEDIUMINT NOT NULL AUTO_INCREMENT, "
@@ -209,9 +241,7 @@ class Session:
         cursor.execute(query)
         current_columns = set([column[0] for column in cursor.fetchall()])
         obj_columns = set()
-        for key, value in vars(obj).items():
-            if key.startswith("_") or isinstance(value, property) or callable(value):
-                continue
+        for key, value in obj.get_table_dict().items():
             obj_columns.add(key)
         columns_to_add = obj_columns - current_columns
         columns_to_delete = current_columns - obj_columns
@@ -243,8 +273,8 @@ class Session:
         encrypted_obj = crypt.encrypt_obj(obj)
         query = "INSERT INTO " + obj.__tablename__ + " ("
         all_values = []
-        for key, value in vars(encrypted_obj).items():
-            if key.startswith("_") or key == "id":
+        for key, value in encrypted_obj.get_table_dict().items():
+            if key == "id":
                 continue
             query += key + ","
             all_values.append(value)
@@ -269,11 +299,9 @@ class Session:
         query = "UPDATE " + obj.__tablename__ + " SET "
         all_values = []
         obj_id = -1
-        for key, value in vars(encrypted_obj).items():
+        for key, value in encrypted_obj.get_table_dict().items():
             if key == "id":
                 obj_id = value
-                continue
-            if key.startswith("_"):
                 continue
             query += key + " = %s, "
             all_values.append(value)
