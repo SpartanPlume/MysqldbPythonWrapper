@@ -67,11 +67,12 @@ def encrypt_obj(obj):
     encrypted_obj = copy.deepcopy(obj)
     fields = vars(encrypted_obj)
     for key, value in fields.items():
-        if not key.startswith("_"):
-            if is_encrypted(encrypted_obj, key):
-                setattr(encrypted_obj, key, _fernet.encrypt(to_bytes(value)))
-            elif isinstance(getattr(type(encrypted_obj)(), key), bytes) and not isinstance(value, bytes):
-                setattr(encrypted_obj, key, hash_value(value))
+        if key.startswith("_") or isinstance(value, (property, classmethod, staticmethod)) or callable(value):
+            continue
+        if is_encrypted(encrypted_obj, key):
+            setattr(encrypted_obj, key, _fernet.encrypt(to_bytes(value)))
+        elif isinstance(getattr(type(encrypted_obj)(), key), bytes) and not isinstance(value, bytes):
+            setattr(encrypted_obj, key, hash_value(value))
     return encrypted_obj
 
 
@@ -82,9 +83,10 @@ def decrypt_obj(obj):
     decrypted_obj = copy.deepcopy(obj)
     fields = vars(decrypted_obj)
     for key, value in fields.items():
-        if not key.startswith("_"):
-            if is_encrypted(decrypted_obj, key) and value:
-                setattr(decrypted_obj, key, from_bytes(_fernet.decrypt(value), getattr(type(decrypted_obj)(), key)))
-            elif not value:
-                setattr(decrypted_obj, key, getattr(type(decrypted_obj)(), key))
+        if key.startswith("_") or isinstance(value, (property, classmethod, staticmethod)) or callable(value):
+            continue
+        if is_encrypted(decrypted_obj, key) and value:
+            setattr(decrypted_obj, key, from_bytes(_fernet.decrypt(value), getattr(type(decrypted_obj)(), key)))
+        elif not value:
+            setattr(decrypted_obj, key, getattr(type(decrypted_obj)(), key))
     return decrypted_obj

@@ -24,6 +24,14 @@ class Test(Base):
     def func(self):
         pass
 
+    @classmethod
+    def class_method(cls):
+        pass
+
+    @staticmethod
+    def static_method(cls):
+        pass
+
     @property
     def childs(self):
         if self._childs is None:

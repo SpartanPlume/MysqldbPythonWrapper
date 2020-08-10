@@ -81,7 +81,7 @@ class Base(metaclass=BaseMetaclass):
     def get_table_dict(self):
         table_dict = {}
         for key, value in vars(self).items():
-            if key.startswith("_") or isinstance(value, property) or callable(value):
+            if key.startswith("_") or isinstance(value, (property, classmethod, staticmethod)) or callable(value):
                 continue
             table_dict[key] = value
         return table_dict
