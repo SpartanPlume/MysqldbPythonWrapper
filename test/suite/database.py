@@ -1,5 +1,7 @@
 """All tests concerning the mysqldb_wrapper"""
 
+import time
+import mock
 import unittest
 from cryptography.fernet import Fernet
 
@@ -131,6 +133,7 @@ class DatabaseTestCase(unittest.TestCase):
             self.session.query(Parent).all()
 
     def test_columns_addition_and_deletion(self):
+        """Adds missing columns and delete unnecessary ones"""
         obj = Test(hashed="aaaa", number=1, string="word", boolean=True)
         self.session.add(obj)
 
@@ -160,6 +163,16 @@ class DatabaseTestCase(unittest.TestCase):
         self.assertEqual(obj.new_column2, "new_column")
         self.session.query(Test2).delete()
 
+    def test_commit_timeout(self):
+        """Tests commit timeout"""
+        self.session.db.close = mock.Mock()
+        self.session.db.reconnect = mock.Mock()
+        self.session.db.db.commit = mock.Mock(side_effect=(lambda: time.sleep(3)))
+        obj = Child()
+        self.session.add(obj)
+        self.session.db.close.assert_called_once()
+        self.session.db.reconnect.assert_called_once()
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -176,4 +189,5 @@ def suite():
     suite.addTest(DatabaseTestCase("test_delete_none_or_empty"))
     suite.addTest(DatabaseTestCase("test_parent_not_queryable"))
     suite.addTest(DatabaseTestCase("test_columns_addition_and_deletion"))
+    suite.addTest(DatabaseTestCase("test_commit_timeout"))
     return suite

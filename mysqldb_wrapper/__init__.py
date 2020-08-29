@@ -1,5 +1,6 @@
 """MySQLdb wrapper for easy usage and encryption"""
 
+import signal
 import copy
 import datetime
 import logging
@@ -15,6 +16,26 @@ warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
 MYSQL_SERVER_IS_GONE = 2006
 MYSQL_TABLE_ALREADY_EXISTS = 1050
+
+
+class TimeoutError(Exception):
+    pass
+
+
+class timeout:
+    def __init__(self, seconds=2, error_message="Timeout"):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
 
 
 class Empty:
@@ -120,8 +141,9 @@ class BaseOperator:
 class Cursor:
     """Wrapper of the database cursor"""
 
-    def __init__(self, cursor, db):
+    def __init__(self, cursor, cursorclass, db):
         self.cursor = cursor
+        self.cursorclass = cursorclass
         self.db = db
         self.logger = db.logger
 
@@ -131,12 +153,21 @@ class Cursor:
     def execute(self, query, args=None):
         self.logger.info(query)
         try:
-            self.cursor.execute(query, args)
+            with timeout():
+                self.cursor.execute(query, args)
         except MySQLdb.OperationalError as e:
             error_code, _ = e.args
             if error_code != MYSQL_SERVER_IS_GONE:
                 raise e
             self.db.reconnect()
+            new_cursor = self.db.cursor(self.cursorclass)
+            self.cursor = new_cursor.cursor
+            self.cursor.execute(query, args)
+        except TimeoutError:
+            self.db.close()
+            self.db.reconnect()
+            new_cursor = self.db.cursor(self.cursorclass)
+            self.cursor = new_cursor.cursor
             self.cursor.execute(query, args)
 
 
@@ -169,7 +200,10 @@ class Database:
         self.logger.info("Connection to the database " + db_name + " established.")
 
     def close(self):
-        self.db.close()
+        try:
+            self.db.close()
+        except Exception:
+            return
 
     def reconnect(self):
         self.logger.info("Reconnecting to the database " + self.db_name + "...")
@@ -185,17 +219,28 @@ class Database:
                 raise e
             self.reconnect()
             cursor = self.db.cursor(cursorclass)
-        return Cursor(cursor, self)
+        return Cursor(cursor, cursorclass, self)
 
     def commit(self):
-        try:
-            self.db.commit()
-        except MySQLdb.OperationalError as e:
-            error_code, _ = e.args
-            if error_code != MYSQL_SERVER_IS_GONE:
-                raise e
-            self.reconnect()
-            self.db.commit()
+        retry = False
+        while True:
+            try:
+                with timeout():
+                    self.db.commit()
+                return
+            except MySQLdb.OperationalError as e:
+                error_code, _ = e.args
+                if error_code != MYSQL_SERVER_IS_GONE:
+                    raise e
+                self.reconnect()
+                return
+            except TimeoutError:
+                if not retry:
+                    retry = True
+                    continue
+                self.close()
+                self.reconnect()
+                return
 
 
 class Session:
