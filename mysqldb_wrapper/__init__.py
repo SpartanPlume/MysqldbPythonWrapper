@@ -164,6 +164,7 @@ class Cursor:
             self.cursor = new_cursor.cursor
             self.cursor.execute(query, args)
         except TimeoutError:
+            self.logger.error("Timeout on cursor execute")
             self.db.close()
             self.db.reconnect()
             new_cursor = self.db.cursor(self.cursorclass)
@@ -235,6 +236,7 @@ class Database:
                 self.reconnect()
                 return
             except TimeoutError:
+                self.logger.error("Timeout on commit")
                 if not retry:
                     retry = True
                     continue
