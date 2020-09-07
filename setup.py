@@ -10,7 +10,7 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="mysqldb_wrapper",
-    version="0.8.1",
+    version="0.8.2",
     description="A small package that wraps MySQLdb for easy usage and encryption",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -1,2 +1,4 @@
 mysqlclient
 cryptography
+pytest
+coverage

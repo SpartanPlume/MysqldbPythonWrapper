@@ -92,6 +92,10 @@ class Base(metaclass=BaseMetaclass):
                 setattr(self, key, value)
         self._session = session
 
+    @classmethod
+    def get_from_id(cls, session, obj_id):
+        return session.query(cls).where(cls.id == obj_id).first()
+
     def __deepcopy__(self, memo):
         new_obj = self.__class__(self._session)
         for key, value in self.get_table_dict().items():
@@ -126,6 +130,9 @@ class Base(metaclass=BaseMetaclass):
         for key, value in {**arg_dict, **kwargs}.items():
             if key in vars(self):
                 setattr(self, key, type(getattr(self, key))(value))
+
+    def delete(self):
+        self._session.delete(self)
 
 
 class BaseOperator:

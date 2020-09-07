@@ -1,13 +1,13 @@
-"""Test table"""
+"""Object table"""
 
 from mysqldb_wrapper import Base, Id
 from test.database.child import Child
 
 
-class Test(Base):
-    """Test class"""
+class Object(Base):
+    """Object class"""
 
-    __tablename__ = "test"
+    __tablename__ = "object"
 
     def __init__(self, session=None, *args, **kwargs):
         super().__init__(session, *args, **kwargs)
