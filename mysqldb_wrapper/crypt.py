@@ -32,7 +32,7 @@ def to_bytes(value):
         return bytes(value, "utf-8")
     if isinstance(value, bool) or isinstance(value, int):
         number = int(value)
-        return number.to_bytes((number.bit_length() + 7) // 8, "big", signed=True)
+        return number.to_bytes((number.bit_length() + 7) // 8, "big", signed=False)
     return value
 
 

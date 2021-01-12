@@ -1,6 +1,5 @@
 """All tests concerning the encryption and decryption of the data"""
 
-import pytest
 import copy
 
 from test.resources.mock import Matcher

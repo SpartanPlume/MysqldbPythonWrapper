@@ -4,3 +4,4 @@ branch = True
 [report]
 omit =
     test/**
+    /home/*

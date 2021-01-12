@@ -1,8 +1,6 @@
 """All tests concerning the mysqldb_wrapper"""
 
-import logging
 import time
-import mock
 import pytest
 from cryptography.fernet import Fernet
 
@@ -169,4 +167,3 @@ def test_commit_timeout(session, mocker):
     session.add(obj)
     session.db.close.assert_called_once()
     session.db.reconnect.assert_called_once()
-
