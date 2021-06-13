@@ -1,6 +1,7 @@
 """MySQLdb wrapper for easy usage and encryption"""
 
-import signal
+# TODO in v1: fields alsoAsHash attribute
+
 import copy
 import datetime
 import logging
@@ -16,26 +17,6 @@ warnings.filterwarnings("ignore", category=MySQLdb.Warning)
 
 MYSQL_SERVER_IS_GONE = 2006
 MYSQL_TABLE_ALREADY_EXISTS = 1050
-
-
-class TimeoutError(Exception):
-    pass
-
-
-class timeout:
-    def __init__(self, seconds=2, error_message="Timeout"):
-        self.seconds = seconds
-        self.error_message = error_message
-
-    def handle_timeout(self, signum, frame):
-        raise TimeoutError(self.error_message)
-
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(self.seconds)
-
-    def __exit__(self, type, value, traceback):
-        signal.alarm(0)
 
 
 class Empty:
@@ -160,19 +141,11 @@ class Cursor:
     def execute(self, query, args=None):
         self.logger.info(query)
         try:
-            with timeout():
-                self.cursor.execute(query, args)
+            self.cursor.execute(query, args)
         except MySQLdb.OperationalError as e:
             error_code, _ = e.args
             if error_code != MYSQL_SERVER_IS_GONE:
                 raise e
-            self.db.reconnect()
-            new_cursor = self.db.cursor(self.cursorclass)
-            self.cursor = new_cursor.cursor
-            self.cursor.execute(query, args)
-        except TimeoutError:
-            self.logger.error("Timeout on cursor execute")
-            self.db.close()
             self.db.reconnect()
             new_cursor = self.db.cursor(self.cursorclass)
             self.cursor = new_cursor.cursor
@@ -230,26 +203,15 @@ class Database:
         return Cursor(cursor, cursorclass, self)
 
     def commit(self):
-        retry = False
-        while True:
-            try:
-                with timeout():
-                    self.db.commit()
-                return
-            except MySQLdb.OperationalError as e:
-                error_code, _ = e.args
-                if error_code != MYSQL_SERVER_IS_GONE:
-                    raise e
-                self.reconnect()
-                return
-            except TimeoutError:
-                self.logger.error("Timeout on commit")
-                if not retry:
-                    retry = True
-                    continue
-                self.close()
-                self.reconnect()
-                return
+        try:
+            self.db.commit()
+            return
+        except MySQLdb.OperationalError as e:
+            error_code, _ = e.args
+            if error_code != MYSQL_SERVER_IS_GONE:
+                raise e
+            self.reconnect()
+            return
 
 
 class Session:
