@@ -1,5 +1,3 @@
-#!/usr/bin/bash
-
 DB_TEST=$(jq -r '.DB_TEST' constants.json)
 DB_USERNAME=$(jq -r '.DB_USERNAME' constants.json)
 DB_PASSWORD=$(jq -r '.DB_PASSWORD' constants.json)

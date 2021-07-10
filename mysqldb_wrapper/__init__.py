@@ -73,18 +73,19 @@ class Base(metaclass=BaseMetaclass):
                 setattr(self, key, value)
         self._session = session
 
-    @classmethod
-    def get_from_id(cls, session, obj_id):
-        return session.query(cls).where(cls.id == obj_id).first()
-
     def __deepcopy__(self, memo):
         new_obj = self.__class__(self._session)
         for key, value in self.get_table_dict().items():
             setattr(new_obj, key, copy.deepcopy(value, memo))
         return new_obj
 
+    @classmethod
+    def get_from_id(cls, session, obj_id):
+        return session.query(cls).where(cls.id == obj_id).first()
+
     @ClassOrInstanceMethod
     def get_table_dict(self):
+        """Gets all fields of the table."""
         table_dict = {}
         for key, value in vars(self).items():
             if key.startswith("_") or isinstance(value, (property, classmethod, staticmethod)) or callable(value):
@@ -92,7 +93,17 @@ class Base(metaclass=BaseMetaclass):
             table_dict[key] = value
         return table_dict
 
+    def get_api_dict(self):
+        """Gets all fields of the table, except bytes field."""
+        table_dict = self.get_table_dict()
+        api_dict = {}
+        for key, value in table_dict.items():
+            if not isinstance(object.__getattribute__(type(self), key), bytes):
+                api_dict[key] = value
+        return api_dict
+
     def get_complete_dict(self):
+        """Gets all fields of the table, and of the subtables present in the object. (Id fields are subtables)"""
         complete_dict = self.get_table_dict()
         for key, value in vars(type(self)).items():
             if isinstance(value, property):

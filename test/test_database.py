@@ -130,6 +130,36 @@ def test_parent_not_queryable(session):
         session.query(Parent).all()
 
 
+def test_get_table_dict(session):
+    """Gets the dict version of an object."""
+    obj = Object(hashed="aaaa", number=1, string="word", boolean=True)
+    session.add(obj)
+    obj = session.query(Object).first()
+    assert {
+        "number": 1,
+        "string": "word",
+        "boolean": True,
+        "id": obj.id,
+        "created_at": obj.created_at,
+        "updated_at": obj.updated_at,
+        "hashed": obj.hashed,
+    } == obj.get_table_dict()
+
+
+def test_get_api_dict(session):
+    """Gets the dict version of an object, minus hashed fields."""
+    obj = Object(hashed="aaaa", number=1, string="word", boolean=True)
+    session.add(obj)
+    assert {
+        "number": 1,
+        "string": "word",
+        "boolean": True,
+        "id": obj.id,
+        "created_at": obj.created_at,
+        "updated_at": obj.updated_at,
+    } == obj.get_api_dict()
+
+
 def test_columns_addition_and_deletion(session):
     """Adds missing columns and delete unnecessary ones"""
     obj = Object(hashed="aaaa", number=1, string="word", boolean=True)
@@ -156,14 +186,3 @@ def test_columns_addition_and_deletion(session):
         obj.update_at
     assert obj == Matcher(Object2(number=1, string="word", boolean=True, new_column1=0, new_column2="new_column"))
     session.query(Object2).delete()
-
-
-def test_commit_timeout(session, mocker):
-    """Tests commit timeout"""
-    session.db.close = mocker.Mock()
-    session.db.reconnect = mocker.Mock()
-    session.db.db.commit = mocker.Mock(side_effect=(lambda: time.sleep(3)))
-    obj = Child()
-    session.add(obj)
-    session.db.close.assert_called_once()
-    session.db.reconnect.assert_called_once()
