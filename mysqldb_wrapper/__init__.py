@@ -396,8 +396,9 @@ class Query:
         to_delete = self.all()
         delete(self.session.db, to_delete)
 
-    def where(self, *args):
-        for key, value in args:
+    def where(self, *args, **kwargs):
+        arguments = {**dict(args), **kwargs}
+        for key, value in arguments.items():
             if self.where_is_used:
                 self.query += " AND "
             else:
