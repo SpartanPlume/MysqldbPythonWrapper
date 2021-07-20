@@ -121,7 +121,7 @@ class Base(metaclass=BaseMetaclass):
     def update(self, arg_dict={}, **kwargs):
         for key, value in {**arg_dict, **kwargs}.items():
             if key in vars(self):
-                setattr(self, key, type(getattr(self, key))(value))
+                setattr(self, key, value)
 
     def delete(self):
         self._session.delete(self)
