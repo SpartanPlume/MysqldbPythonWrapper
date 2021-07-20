@@ -399,6 +399,11 @@ class Query:
     def where(self, *args, **kwargs):
         arguments = {**dict(args), **kwargs}
         for key, value in arguments.items():
+            if isinstance(value, list):
+                if len(value) > 0:
+                    value = value[0]
+                else:
+                    continue
             if self.where_is_used:
                 self.query += " AND "
             else:

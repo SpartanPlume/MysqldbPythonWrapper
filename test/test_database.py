@@ -83,6 +83,14 @@ def test_query_where_object_by_kwargs(session):
     assert query_obj.hashed != "efgh"
 
 
+def test_query_where_object_by_kwargs_with_array_value(session):
+    """Query an object by a hashed field from the database, using kwargs  and an array value in it"""
+    obj = Object(hashed="efgh", number=1, string="word", boolean=True)
+    query_obj = session.query(Object).where(**{"hashed": ["efgh"]}).first()
+    assert query_obj == Matcher(obj)
+    assert query_obj.hashed != "efgh"
+
+
 def test_query_where_object_by_invalid_kwargs(session):
     """Query an object by a hashed field from the database, using invalid kwargs"""
     with pytest.raises(AttributeError):
