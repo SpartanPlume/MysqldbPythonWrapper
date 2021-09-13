@@ -70,7 +70,11 @@ def encrypt_obj(obj):
         if key.startswith("_") or isinstance(value, (property, classmethod, staticmethod)) or callable(value):
             continue
         if is_encrypted(encrypted_obj, key):
-            setattr(encrypted_obj, key, _fernet.encrypt(to_bytes(value)))
+            try:
+                real_value = type(object.__getattribute__(type(encrypted_obj), key))(value)
+            except ValueError:
+                real_value = value
+            setattr(encrypted_obj, key, _fernet.encrypt(to_bytes(real_value)))
         elif isinstance(getattr(type(encrypted_obj)(), key), bytes) and not isinstance(value, bytes):
             setattr(encrypted_obj, key, hash_value(value))
     return encrypted_obj
